@@ -1,0 +1,84 @@
+{
+  "name": "toomstack-scheduler",
+  "version": "0.2.1",
+  "description": "A fast, lightweight React scheduler with day, work-week, week and month views, drag-and-drop, per-event colours, dark mode and filtering.",
+  "keywords": [
+    "react",
+    "scheduler",
+    "calendar",
+    "appointments",
+    "booking",
+    "timegrid",
+    "dark-mode"
+  ],
+  "license": "MIT",
+  "author": "Jake Toomay",
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./styles.css": "./dist/styles.css",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "AGENTS.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "vite --config vite.playground.config.js",
+    "preview": "vite preview --config vite.playground.config.js",
+    "build": "vite build && node scripts/copy-types.mjs",
+    "build:playground": "vite build --config vite.playground.config.js",
+    "lint": "oxlint --deny-warnings",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:pack": "node scripts/test-pack.mjs",
+    "check": "npm run lint && node scripts/check-version.mjs && npm run test",
+    "verify:package": "npm run build && publint && attw --pack . --exclude-entrypoints toomstack-scheduler/styles.css",
+    "prepublishOnly": "npm run check && npm run verify:package && npm run test:pack"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "jsdom": "^26.1.0",
+    "oxlint": "^1.81.0",
+    "publint": "^0.3.14",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "vite": "^8.3.0",
+    "vitest": "^4.1.12"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

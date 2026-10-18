@@ -1,0 +1,539 @@
+/* ToomstackScheduler — every class is prefixed `tss-`; theme via the --tss-* variables. */
+.tss-root {
+  --tss-primary: #2f6fdd;
+  --tss-primary-hover: #245bb8;
+  --tss-primary-text: #fff;
+  --tss-danger: #d64545;
+  --tss-danger-text: #fff;
+  --tss-text: #212529;
+  --tss-muted: #6c757d;
+  --tss-bg: #fff;
+  --tss-toolbar-bg: #f5f6f8;
+  --tss-btn-hover-bg: #eef0f3;
+  --tss-border: #dee2e6;
+  --tss-line: #e3e6ea;
+  --tss-line-light: #f0f2f4;
+  --tss-offhours: #f7f8fa;
+  --tss-today: #f3f8ff;
+  --tss-event-bg: var(--tss-primary);
+  --tss-event-text: #fff;
+  --tss-event-border: rgb(0 0 0 / 0.08);
+  --tss-event-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+  --tss-drag-shadow: 0 4px 12px rgb(0 0 0 / 0.25);
+  --tss-dialog-shadow: 0 10px 30px rgb(0 0 0 / 0.2);
+  --tss-backdrop: rgb(0 0 0 / 0.35);
+  --tss-now: #e5484d;
+  --tss-gutter: 64px;
+  --tss-min-col: 90px;
+  --tss-radius: 4px;
+  --tss-font: inherit;
+
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  font-family: var(--tss-font);
+  font-size: 13px;
+  color: var(--tss-text);
+  background: var(--tss-bg);
+  border: 1px solid var(--tss-border);
+  border-radius: var(--tss-radius);
+  overflow: hidden;
+}
+.tss-root *,
+.tss-root *::before,
+.tss-root *::after {
+  box-sizing: border-box;
+}
+
+/* ---------- Dark theme ----------
+   Set by the `darkMode` prop as data-theme="dark". `color-scheme` is what makes the
+   native datetime-local pickers and the scrollbars follow; without it they stay light
+   inside a dark dialog. --tss-bg must stay in step with DARK_SURFACE in palette.js,
+   which is what the event colours are measured against. */
+.tss-root[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* The light primary (#2f6fdd) reads at only 3.75:1 on this surface, so it shifts up
+     and takes dark text when used as a fill. */
+  --tss-primary: #4d8ee8;
+  --tss-primary-hover: #6aa6f5;
+  --tss-primary-text: #0b1118;
+  --tss-danger: #ff6b6b;
+  --tss-danger-text: #16181d;
+  --tss-text: #e6e8ec;
+  --tss-muted: #9aa1ab;
+  --tss-bg: #16181d;
+  --tss-toolbar-bg: #1e2127;
+  --tss-btn-hover-bg: #262a31;
+  --tss-border: #2d3138;
+  --tss-line: #262a31;
+  --tss-line-light: #1f232a;
+  --tss-offhours: #12141a;
+  --tss-today: #18212e;
+
+  /* Uncoloured events take the palette's azure, which is measured for this surface. */
+  --tss-event-bg: #1c73b6;
+  --tss-event-text: #fff;
+  /* A light edge, because a black border dissolves into a dark grid. */
+  --tss-event-border: rgb(255 255 255 / 0.14);
+  --tss-event-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+  --tss-drag-shadow: 0 6px 16px rgb(0 0 0 / 0.55);
+  --tss-dialog-shadow: 0 10px 30px rgb(0 0 0 / 0.6);
+  --tss-backdrop: rgb(0 0 0 / 0.6);
+  --tss-now: #ff5a5f;
+}
+
+/* ---------- Theme fade ----------
+   Armed only for the moment the theme actually changes (ToomstackScheduler adds
+   .tss-theme-anim and takes it off again), so hover, focus, drag and view switching
+   are never running a transition. That is what keeps the interaction cost unchanged —
+   not a shorter element list. */
+.tss-theme-anim,
+.tss-theme-anim
+  :is(
+    .tss-toolbar,
+    .tss-footer,
+    .tss-tg-head,
+    .tss-tg-corner,
+    .tss-tg-gutter,
+    .tss-tg-dayhead,
+    .tss-tg-col,
+    .tss-month-head,
+    .tss-month-head > div,
+    .tss-month-cell,
+    .tss-btn,
+    .tss-dialog,
+    .tss-dialog-head,
+    .tss-dialog-actions,
+    .tss-event,
+    .tss-chip,
+    .tss-popover,
+    .tss-form-row input,
+    .tss-form-row select,
+    .tss-form-row textarea
+  ) {
+  transition:
+    background-color 200ms ease,
+    color 200ms ease,
+    border-color 200ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tss-theme-anim,
+  .tss-theme-anim * {
+    transition: none !important;
+  }
+}
+
+/* ---------- Buttons ---------- */
+.tss-btn {
+  font: inherit;
+  color: var(--tss-text);
+  background: var(--tss-bg);
+  border: 1px solid var(--tss-border);
+  border-radius: var(--tss-radius);
+  padding: 5px 12px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.tss-btn:hover { background: var(--tss-btn-hover-bg); }
+.tss-btn:focus-visible { outline: 2px solid var(--tss-primary); outline-offset: 1px; }
+.tss-btn-icon { padding: 5px 10px; font-size: 16px; line-height: 1.1; }
+.tss-btn-primary { background: var(--tss-primary); border-color: var(--tss-primary); color: var(--tss-primary-text); }
+.tss-btn-primary:hover { background: var(--tss-primary-hover); }
+.tss-btn-danger { color: var(--tss-danger); }
+.tss-btn-danger:hover { background: var(--tss-danger); border-color: var(--tss-danger); color: var(--tss-danger-text); }
+.tss-btn-flat { border-color: transparent; background: transparent; color: var(--tss-primary); }
+.tss-btn-group { display: flex; gap: 0; }
+.tss-btn-group .tss-btn + .tss-btn { margin-left: -1px; }
+.tss-btn-group .tss-btn:not(:first-child) { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.tss-btn-group .tss-btn:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.tss-views .tss-active { background: var(--tss-primary); border-color: var(--tss-primary); color: var(--tss-primary-text); position: relative; }
+
+/* ---------- Toolbar / footer ---------- */
+.tss-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 8px 10px;
+  background: var(--tss-toolbar-bg);
+  border-bottom: 1px solid var(--tss-border);
+}
+.tss-range { flex: 1; font-weight: 600; font-size: 15px; min-width: 160px; }
+.tss-footer {
+  padding: 4px 8px;
+  background: var(--tss-toolbar-bg);
+  border-top: 1px solid var(--tss-border);
+}
+
+/* ---------- Time grid (Day / Week / Work Week) ---------- */
+.tss-timegrid { flex: 1; min-height: 0; overflow: auto; position: relative; }
+.tss-tg-head,
+.tss-tg-body {
+  display: grid;
+  grid-template-columns: var(--tss-gutter) repeat(var(--tss-cols), minmax(var(--tss-min-col), 1fr));
+}
+.tss-tg-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--tss-toolbar-bg);
+  border-bottom: 1px solid var(--tss-border);
+}
+.tss-tg-corner { border-right: 1px solid var(--tss-border); }
+.tss-tg-dayhead {
+  padding: 6px 4px;
+  text-align: center;
+  font-weight: 600;
+  border-right: 1px solid var(--tss-line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tss-tg-dayhead.tss-is-today { color: var(--tss-primary); }
+.tss-tg-body { position: relative; }
+.tss-tg-gutter { position: relative; border-right: 1px solid var(--tss-border); background: var(--tss-bg); }
+.tss-tg-hour {
+  position: absolute;
+  right: 6px;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: var(--tss-muted);
+  white-space: nowrap;
+}
+.tss-tg-hour:first-child { transform: none; margin-top: 2px; }
+
+/* Slot + hour lines and off-hours shading are pure CSS: zero DOM per slot. */
+.tss-tg-col {
+  position: relative;
+  border-right: 1px solid var(--tss-line);
+  background-image:
+    linear-gradient(to bottom, var(--tss-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--tss-line-light) 1px, transparent 1px),
+    linear-gradient(
+      to bottom,
+      var(--tss-offhours) var(--tss-biz-top),
+      transparent var(--tss-biz-top),
+      transparent var(--tss-biz-bottom),
+      var(--tss-offhours) var(--tss-biz-bottom)
+    );
+  background-size: 100% var(--tss-hour-h), 100% var(--tss-slot-h), 100% 100%;
+  background-repeat: repeat-y, repeat-y, no-repeat;
+}
+.tss-tg-col.tss-is-today { background-color: var(--tss-today); }
+
+/* ---------- Events ---------- */
+.tss-event {
+  position: absolute;
+  z-index: 1;
+  overflow: hidden;
+  padding: 2px 6px;
+  border-radius: var(--tss-radius);
+  background: var(--tss-ev-bg, var(--tss-event-bg));
+  color: var(--tss-ev-ink, var(--tss-event-text));
+  border: 1px solid var(--tss-event-border);
+  box-shadow: var(--tss-event-shadow);
+  cursor: pointer;
+  user-select: none;
+  touch-action: none;
+  line-height: 1.3;
+  contain: layout paint;
+}
+.tss-readonly .tss-event { touch-action: auto; }
+.tss-event:focus-visible { outline: 2px solid var(--tss-text); outline-offset: 1px; }
+.tss-event-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 12px; }
+.tss-event-time { font-size: 11px; opacity: 0.9; white-space: nowrap; }
+.tss-event-drag-time { display: none; font-size: 11px; white-space: nowrap; }
+.tss-dragging { z-index: 5; opacity: 0.85; box-shadow: var(--tss-drag-shadow); cursor: grabbing; will-change: transform; }
+.tss-dragging .tss-event-time { display: none; }
+.tss-dragging .tss-event-drag-time { display: block; }
+.tss-event-delete {
+  position: absolute;
+  top: 1px;
+  right: 2px;
+  display: none;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1.2;
+  cursor: pointer;
+  opacity: 0.85;
+}
+.tss-event-delete:hover { opacity: 1; }
+.tss-event:hover .tss-event-delete,
+.tss-chip:hover .tss-event-delete { display: block; }
+.tss-readonly .tss-event-delete { display: none !important; }
+.tss-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; cursor: ns-resize; }
+.tss-readonly .tss-resize { display: none; }
+.tss-now { position: absolute; left: 0; right: 0; z-index: 2; height: 2px; background: var(--tss-now); pointer-events: none; }
+.tss-now::before {
+  content: '';
+  position: absolute;
+  left: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tss-now);
+}
+
+/* ---------- Month ---------- */
+.tss-month { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.tss-month-head {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  background: var(--tss-toolbar-bg);
+  border-bottom: 1px solid var(--tss-border);
+}
+.tss-month-head > div { padding: 6px; text-align: center; font-weight: 600; border-right: 1px solid var(--tss-line); }
+.tss-month-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-rows: repeat(6, minmax(84px, 1fr));
+  overflow: auto;
+}
+.tss-month-cell {
+  position: relative;
+  min-width: 0;
+  padding: 2px 3px;
+  border-right: 1px solid var(--tss-line);
+  border-bottom: 1px solid var(--tss-line);
+  overflow: hidden;
+}
+.tss-month-cell.tss-outside { background: var(--tss-offhours); color: var(--tss-muted); }
+.tss-month-cell.tss-is-today { background: var(--tss-today); }
+.tss-month-daynum {
+  display: block;
+  margin-left: auto;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.tss-month-daynum:hover { text-decoration: underline; }
+.tss-is-today .tss-month-daynum { color: var(--tss-primary); font-weight: 700; }
+.tss-chip {
+  position: relative;
+  margin-top: 2px;
+  padding: 1px 16px 1px 5px;
+  border-radius: 3px;
+  background: var(--tss-ev-bg, var(--tss-event-bg));
+  color: var(--tss-ev-ink, var(--tss-event-text));
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  user-select: none;
+}
+.tss-chip:focus-visible { outline: 2px solid var(--tss-text); outline-offset: 1px; }
+.tss-chip-time { opacity: 0.85; }
+.tss-chip .tss-event-delete { top: 0; right: 1px; }
+.tss-more {
+  margin-top: 2px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--tss-primary);
+  cursor: pointer;
+}
+.tss-more:hover { text-decoration: underline; }
+
+.tss-viewport {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Per-event colour ----------
+   Events carry all four values as inline custom properties and CSS picks the pair, so
+   switching theme repaints without React re-rendering the grid. Events with no colour
+   fall through to the global --tss-event-* tokens. */
+.tss-root[data-theme='dark'] :is(.tss-event, .tss-chip) {
+  background: var(--tss-ev-bg-d, var(--tss-event-bg));
+  color: var(--tss-ev-ink-d, var(--tss-event-text));
+}
+
+/* ---------- Colour swatches (filter popover and the `color` editor field) ---------- */
+.tss-swatch {
+  position: relative;
+  padding: 0;
+  border: 1px solid var(--tss-event-border);
+  border-radius: var(--tss-radius);
+  background: var(--tss-sw, var(--tss-event-bg));
+  cursor: pointer;
+}
+.tss-swatch:focus-visible { outline: 2px solid var(--tss-primary); outline-offset: 2px; }
+.tss-root[data-theme='dark'] .tss-swatch { background: var(--tss-sw-d, var(--tss-event-bg)); }
+
+/* The editor field: a row of swatches, the chosen one ringed. */
+.tss-swatch-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.tss-swatch-row .tss-swatch { width: 22px; height: 22px; border-radius: 50%; }
+.tss-swatch-row .tss-swatch[aria-pressed='true'] {
+  box-shadow: 0 0 0 2px var(--tss-bg), 0 0 0 4px var(--tss-primary);
+}
+.tss-swatch-none {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px dashed var(--tss-border);
+  background: transparent;
+  color: var(--tss-muted);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* ---------- Filter ---------- */
+.tss-filter-group { display: flex; gap: 6px; }
+.tss-filter { position: relative; display: flex; }
+/* A filter that's on reads as outlined, not filled: the view switcher owns the filled
+   state, and two filled controls side by side would compete. */
+.tss-filter .tss-btn.tss-active {
+  border-color: var(--tss-primary);
+  color: var(--tss-primary);
+}
+.tss-filter-count {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--tss-primary);
+  color: var(--tss-primary-text);
+  font-size: 11px;
+  line-height: 16px;
+}
+.tss-popover {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 180px;
+  padding: 6px;
+  border: 1px solid var(--tss-border);
+  border-radius: var(--tss-radius);
+  background: var(--tss-bg);
+  box-shadow: var(--tss-dialog-shadow);
+}
+.tss-popover-title {
+  padding: 2px 6px 6px;
+  color: var(--tss-muted);
+  font-size: 11px;
+}
+/* Rows, not bare dots: a filter needs names to be usable. */
+.tss-filter-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 6px;
+  border: 0;
+  border-radius: var(--tss-radius);
+  background: none;
+  color: var(--tss-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tss-filter-opt:hover { background: var(--tss-btn-hover-bg); }
+.tss-filter-opt:focus-visible { outline: 2px solid var(--tss-primary); outline-offset: -2px; }
+.tss-filter-opt .tss-swatch { width: 14px; height: 14px; flex: none; }
+/* Off reads as dimmed rather than absent, so the palette stays legible either way. */
+.tss-filter-opt[aria-pressed='false'] { color: var(--tss-muted); }
+.tss-filter-opt[aria-pressed='false'] .tss-swatch { opacity: 0.3; }
+.tss-filter-opt-check { margin-left: auto; opacity: 0; }
+.tss-filter-opt[aria-pressed='true'] .tss-filter-opt-check { opacity: 1; }
+.tss-popover-actions {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--tss-border);
+  display: flex;
+}
+
+/* Filters hiding everything is a dead end, so say what to do about it. */
+.tss-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  color: var(--tss-muted);
+  background: color-mix(in srgb, var(--tss-bg) 82%, transparent);
+  pointer-events: none;
+}
+.tss-empty > * { pointer-events: auto; }
+
+/* ---------- Dialogs ---------- */
+.tss-dialog {
+  padding: 0;
+  border: 1px solid var(--tss-border);
+  border-radius: 6px;
+  box-shadow: var(--tss-dialog-shadow);
+  color: var(--tss-text);
+  background: var(--tss-bg);
+  font-size: 13px;
+  width: min(520px, calc(100vw - 32px));
+}
+.tss-dialog::backdrop { background: var(--tss-backdrop, rgb(0 0 0 / 0.35)); }
+.tss-dialog-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--tss-toolbar-bg);
+  border-bottom: 1px solid var(--tss-border);
+}
+.tss-dialog-title { font-weight: 600; font-size: 15px; }
+.tss-icon-btn { border: 0; background: none; font-size: 20px; line-height: 1; cursor: pointer; color: var(--tss-muted); padding: 0 4px; }
+.tss-icon-btn:hover { color: var(--tss-text); }
+.tss-form { border: 0; margin: 0; padding: 14px; display: grid; gap: 10px; }
+.tss-form-row { display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: 10px; }
+.tss-form-row label { text-align: right; color: var(--tss-muted); }
+.tss-form-row input:not([type='checkbox']),
+.tss-form-row select,
+.tss-form-row textarea {
+  width: 100%;
+  font: inherit;
+  padding: 6px 8px;
+  border: 1px solid var(--tss-border);
+  border-radius: var(--tss-radius);
+  background: var(--tss-bg);
+  color: var(--tss-text);
+}
+.tss-form-row textarea { resize: vertical; }
+.tss-form-row :is(input, select, textarea):focus { outline: 2px solid var(--tss-primary); outline-offset: -1px; border-color: var(--tss-primary); }
+.tss-form-row input[type='checkbox'] { justify-self: start; }
+.tss-req { color: var(--tss-danger); }
+.tss-form-error { margin: 0 14px 10px; color: var(--tss-danger); }
+.tss-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--tss-border);
+  background: var(--tss-toolbar-bg);
+}
+.tss-dialog-actions .tss-left { margin-right: auto; }
+.tss-confirm { width: min(400px, calc(100vw - 32px)); }
+.tss-confirm-text { margin: 0; padding: 18px 14px; }
+
+@media (max-width: 560px) {
+  .tss-form-row { grid-template-columns: 1fr; gap: 4px; }
+  .tss-form-row label { text-align: left; }
+  .tss-root { --tss-gutter: 48px; --tss-min-col: 72px; }
+}
