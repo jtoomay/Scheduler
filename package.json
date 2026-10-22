@@ -1,6 +1,6 @@
 {
   "name": "toomstack-scheduler",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "A fast, lightweight React scheduler with day, work-week, week and month views, drag-and-drop, per-event colours, dark mode and filtering.",
   "keywords": [
     "react",

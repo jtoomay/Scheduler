@@ -1,6 +1,6 @@
 # ToomstackScheduler
 
-**Version 0.2.1** · A fast, lightweight React scheduler modeled on the Telerik (KendoReact) Scheduler.
+**Version 0.3.0** · A fast, lightweight React scheduler modeled on the Telerik (KendoReact) Scheduler.
 
 ToomstackScheduler gives you the Telerik-style workflow: double-click to create, double-click to edit, drag to move, drag to resize, and Day / Work Week / Week / Month views. It stays fast with thousands of events and has **no runtime dependencies beyond React**.
 
@@ -127,7 +127,7 @@ Validation: Name, Start and End are required, and End must be after Start.
 A confirmation window always asks before anything is deleted.
 
 ### Business hours vs. full day
-The time views show business hours (8 AM–5 PM) by default. Click **Show full day** in the footer to see all 24 hours. The view scrolls to the start of business hours, and hours outside business hours are shaded. Click **Show business hours** to switch back.
+The time views show business hours (8 AM–5 PM) by default, stretched so those hours fill the panel down to the footer. `slotHeight` (28px) is the minimum row size: a shorter panel keeps that size and scrolls, and a row is never drawn shorter than that. A full day is 24 hours, so it scrolls on a normal screen and stretches only when the panel is tall enough to hold it. Click **Show full day** in the footer to see all 24 hours. The view scrolls to the start of business hours, and hours outside business hours are shaded. Click **Show business hours** to switch back.
 
 ### Month view
 - Each day shows up to 3 events (start time + name). If there are more, the cell shows **+N more**. Click it to open that day in Day view.
@@ -210,7 +210,7 @@ Leave it out and the scheduler renders as a column of unstyled divs with no grid
 | `businessHours` | `{ start: number, end: number }` | `{ start: 8, end: 17 }` | Business hours as hours of the day (0–24). Used for the default range, off-hours shading, and the default start time when creating from Month view. |
 | `defaultShowFullDay` | `boolean` | `false` | Start in full-day (24h) mode. |
 | `slotMinutes` | `number` | `30` | Length of one time slot, which is also the length of an event created by double-clicking a slot. |
-| `slotHeight` | `number` (px) | `28` | Height in pixels of one slot. |
+| `slotHeight` | `number` (px) | `28` | Minimum height of one slot. Rows grow to fill a taller panel and never shrink below this; the grid scrolls instead. |
 | `snapMinutes` | `number` | `15` | Step size for dragging and resizing. |
 | `weekStartsOn` | `0–6` | `0` (Sunday) | First day of the week. |
 | `workWeekDays` | `number[]` | `[1,2,3,4,5]` | Days shown in Work Week (0 = Sunday). |
@@ -558,7 +558,7 @@ import ToomstackScheduler, {
   DEFAULT_FILTERS,      // [colorFilter]
   makeFieldFilter,      // makeFieldFilter({ id, label, field, format }) builds a filter for any property
   NO_COLOR,             // '__none', the filter value for events with no value
-  VERSION,              // e.g. '0.2.1'
+  VERSION,              // e.g. '0.3.0'
 } from 'toomstack-scheduler'
 ```
 
@@ -577,7 +577,7 @@ The Telerik Scheduler can feel laggy because it renders a DOM element for every 
 - **One set of listeners.** Clicks, double-clicks, keys and pointer events are handled once on the view container, not attached to every event.
 - **Cached `Intl` formatters, native `<dialog>`, no date library, no UI kit.** Zero runtime dependencies beyond React.
 
-**Bundle size (v0.2.1, measured from the library build):** 35.4 KB of JS and 13.0 KB of CSS, which is **10.9 KB and 3.1 KB gzipped**. React is external and not included.
+**Bundle size (v0.3.0, measured from the library build):** 36.3 KB of JS and 13.0 KB of CSS, which is **11.2 KB and 3.1 KB gzipped**. React is external and not included.
 
 **Measured (v0.1.0, production build, 2,000 events loaded, 280 visible in Week view):** switching week, switching view, or toggling full day takes **2–21 ms** from click to committed DOM plus layout.
 

@@ -3,6 +3,11 @@
 All notable changes to ToomstackScheduler are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses [Semantic Versioning](https://semver.org/).
 
+## [0.3.0] - 2026-10-22
+
+### Changed
+- Day, Work Week, and Week views fill the height they are given. `slotHeight` is the minimum row height: a taller panel stretches the visible hours to the footer, and a shorter one scrolls instead of shrinking the rows. Month view is unchanged.
+
 ## [0.2.1] - 2026-10-18
 
 First release published to npm as `toomstack-scheduler`. No change to the component's API

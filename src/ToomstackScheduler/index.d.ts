@@ -178,7 +178,10 @@ export interface ToomstackSchedulerProps {
   defaultShowFullDay?: boolean
   /** Length of one slot in minutes, and of an event created by double-clicking one. */
   slotMinutes?: number
-  /** Height of one slot in pixels. */
+  /**
+   * Minimum height of one slot, in pixels. Rows grow to fill a taller panel and
+   * never draw shorter than this; the grid scrolls instead.
+   */
   slotHeight?: number
   /** Step size for dragging and resizing, in minutes. */
   snapMinutes?: number

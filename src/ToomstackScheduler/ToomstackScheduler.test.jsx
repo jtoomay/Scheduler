@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import ToomstackScheduler from './ToomstackScheduler'
@@ -431,5 +431,213 @@ describe('renderFields', () => {
 
     expect(screen.getByRole('alert')).toBeInTheDocument()
     expect(onEventUpdate).not.toHaveBeenCalled()
+  })
+})
+
+describe('time grid fills the viewport', () => {
+  const BUSINESS = 9 * 60
+  const FULL_DAY = 24 * 60
+  const SLOT_MINUTES = 30
+  const box = { viewport: 900, header: 48 }
+  let observers = []
+  let restore = []
+
+  function metricHeight(el) {
+    if (!el?.classList) return null
+    if (el.classList.contains('tss-viewport') || el.classList.contains('tss-timegrid')) return box.viewport
+    if (el.classList.contains('tss-tg-head')) return box.header
+    return null
+  }
+
+  function patchMetric(proto, name) {
+    const previous = Object.getOwnPropertyDescriptor(proto, name)
+    Object.defineProperty(proto, name, {
+      configurable: true,
+      get() {
+        const height = metricHeight(this)
+        if (height != null) return height
+        if (previous?.get) return previous.get.call(this)
+        return 0
+      },
+    })
+    return () => {
+      if (previous) Object.defineProperty(proto, name, previous)
+      else delete proto[name]
+    }
+  }
+
+  beforeEach(() => {
+    box.viewport = 900
+    box.header = 48
+    observers = []
+    const previousCapture = HTMLElement.prototype.setPointerCapture
+    HTMLElement.prototype.setPointerCapture = () => {}
+    // jsdom has no PointerEvent, so fireEvent would build a plain Event and drop
+    // clientX/clientY/button. A MouseEvent subclass keeps those, which drag needs.
+    const previousPointerEvent = window.PointerEvent
+    window.PointerEvent = class PointerEvent extends MouseEvent {
+      constructor(type, init = {}) {
+        super(type, init)
+        this.pointerId = init.pointerId ?? 1
+        this.pointerType = init.pointerType ?? 'mouse'
+      }
+    }
+    const previousRO = globalThis.ResizeObserver
+    globalThis.ResizeObserver = class {
+      constructor(callback) {
+        this.callback = callback
+        observers.push(this)
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {
+        observers = observers.filter((observer) => observer !== this)
+      }
+    }
+    window.ResizeObserver = globalThis.ResizeObserver
+    restore = [
+      patchMetric(Element.prototype, 'clientHeight'),
+      patchMetric(HTMLElement.prototype, 'offsetHeight'),
+      () => {
+        if (previousCapture) HTMLElement.prototype.setPointerCapture = previousCapture
+        else delete HTMLElement.prototype.setPointerCapture
+        window.PointerEvent = previousPointerEvent
+        globalThis.ResizeObserver = previousRO
+        window.ResizeObserver = previousRO
+      },
+    ]
+  })
+
+  afterEach(() => {
+    for (const undo of restore) undo()
+    restore = []
+  })
+
+  function resizeTo(viewport, header = box.header) {
+    box.viewport = viewport
+    box.header = header
+    act(() => {
+      for (const observer of observers) observer.callback()
+    })
+  }
+
+  function bodyOf(container) {
+    return container.querySelector('.tss-tg-body')
+  }
+
+  /** The grid either fills the measured viewport or stays at the slotHeight floor. */
+  function expectGrid(container, minutes, slotHeight = 28) {
+    const body = bodyOf(container)
+    const room = box.viewport - box.header
+    const floor = (minutes / SLOT_MINUTES) * slotHeight
+    const height = parseFloat(body.style.height)
+    const slot = parseFloat(body.style.getPropertyValue('--tss-slot-h'))
+    if (room > floor) {
+      expect(height).toBeCloseTo(room, 5)
+      expect(height + box.header).toBeCloseTo(box.viewport, 5)
+      expect(slot).toBeCloseTo((room / minutes) * SLOT_MINUTES, 5)
+      expect(slot).toBeGreaterThan(slotHeight)
+    } else {
+      expect(height).toBeCloseTo(floor, 5)
+      expect(height).toBeGreaterThan(room)
+      expect(slot).toBeCloseTo(slotHeight, 5)
+    }
+    expect(parseFloat(body.style.getPropertyValue('--tss-hour-h'))).toBeCloseTo((height / minutes) * 60, 5)
+    return { height, slot, pxPerMin: height / minutes }
+  }
+
+  it('stretches business hours to the footer and uses that scale for events, drag, and create', () => {
+    const onEventUpdate = vi.fn()
+    const { container } = render(
+      <ToomstackScheduler events={EVENTS} defaultDate={MONDAY} height={700} onEventUpdate={onEventUpdate} />,
+    )
+
+    const { pxPerMin, slot } = expectGrid(container, BUSINESS)
+    const event = container.querySelector('.tss-event[data-id="a"]')
+    // 9:00 is one hour into the 8:00 business range.
+    expect(parseFloat(event.style.top)).toBeCloseTo(pxPerMin * 60, 4)
+    expect(parseFloat(event.style.height)).toBeCloseTo(pxPerMin * 60, 4)
+    expect(container.querySelector('.tss-root').style.height).toBe('700px')
+
+    const footer = container.querySelector('.tss-footer')
+    const viewport = container.querySelector('.tss-viewport')
+    expect(viewport.contains(footer)).toBe(false)
+    expect(viewport.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    // Dragging one drawn slot must move the event by slotMinutes, not by the minimum scale.
+    const dy = slot
+    fireEvent.pointerDown(event.querySelector('.tss-resize'), { button: 0, pointerId: 1, clientX: 20, clientY: 20 })
+    fireEvent.pointerMove(event, { button: 0, pointerId: 1, clientX: 20, clientY: 20 + dy })
+    fireEvent.pointerUp(event, { button: 0, pointerId: 1, clientX: 20, clientY: 20 + dy })
+    expect(onEventUpdate).toHaveBeenCalledTimes(1)
+    const resized = onEventUpdate.mock.calls[0][0]
+    expect(resized.start.getHours()).toBe(9)
+    expect(resized.start.getMinutes()).toBe(0)
+    expect(resized.end.getHours()).toBe(10)
+    expect(resized.end.getMinutes()).toBe(30)
+
+    const monday = container.querySelector(`.tss-tg-col[data-day-ms="${MONDAY.getTime()}"]`)
+    fireEvent.doubleClick(monday, { clientY: slot * 2 + 2 })
+    expect(screen.getByLabelText(/^Start/)).toHaveValue('2026-01-05T09:00')
+    expect(screen.getByLabelText(/^End/)).toHaveValue('2026-01-05T09:30')
+  })
+
+  it('scrolls a short viewport and does not shrink rows below slotHeight', () => {
+    box.viewport = 360
+    const { container, rerender } = render(
+      <ToomstackScheduler events={EVENTS} defaultDate={MONDAY} height={700} />,
+    )
+
+    const { pxPerMin } = expectGrid(container, BUSINESS)
+    const event = container.querySelector('.tss-event[data-id="a"]')
+    expect(parseFloat(event.style.top)).toBeCloseTo(pxPerMin * 60, 4)
+    expect(pxPerMin).toBeCloseTo(28 / SLOT_MINUTES, 5)
+
+    const viewport = container.querySelector('.tss-viewport')
+    const timegrid = container.querySelector('.tss-timegrid')
+    expect(viewport.contains(timegrid)).toBe(true)
+    expect(timegrid.contains(bodyOf(container))).toBe(true)
+    // The rows stay at the floor, so the scrollport inside .tss-viewport scrolls.
+    expect(getComputedStyle(timegrid).overflow).toBe('auto')
+    expect(container.querySelector('.tss-root').style.height).toBe('700px')
+
+    rerender(<ToomstackScheduler events={EVENTS} defaultDate={MONDAY} height={700} slotHeight={40} />)
+    const raised = expectGrid(container, BUSINESS, 40)
+    expect(raised.slot).toBeCloseTo(40, 5)
+    expect(parseFloat(container.querySelector('.tss-event[data-id="a"]').style.top)).toBeCloseTo(raised.pxPerMin * 60, 4)
+  })
+
+  it('updates the grid when the full day is toggled, the view changes, and the panel is resized', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<ToomstackScheduler events={EVENTS} defaultDate={MONDAY} height={700} />)
+
+    expectGrid(container, BUSINESS)
+
+    await user.click(screen.getByRole('button', { name: 'Show full day' }))
+    expectGrid(container, FULL_DAY)
+    expect(bodyOf(container).style.getPropertyValue('--tss-slot-h')).toBe('28px')
+
+    resizeTo(1800)
+    expectGrid(container, FULL_DAY)
+
+    await user.click(screen.getByRole('button', { name: 'Show business hours' }))
+    expectGrid(container, BUSINESS)
+
+    // A view change remeasures even without a resize notification.
+    box.viewport = 1200
+    expect(parseFloat(bodyOf(container).style.height)).toBeCloseTo(1800 - 48, 5)
+    await user.click(screen.getByRole('tab', { name: 'Day' }))
+    expectGrid(container, BUSINESS)
+
+    box.header = 80
+    await user.click(screen.getByRole('tab', { name: 'Work Week' }))
+    expectGrid(container, BUSINESS)
+
+    await user.click(screen.getByRole('tab', { name: 'Month' }))
+    expect(container.querySelector('.tss-month')).toBeInTheDocument()
+    expect(container.querySelector('.tss-tg-body')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('tab', { name: 'Week' }))
+    expectGrid(container, BUSINESS)
   })
 })

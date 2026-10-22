@@ -8,6 +8,31 @@ const DRAG_THRESHOLD_PX = 4
 const MIN_EVENT_PX = 18
 
 /**
+ * Pixel height the time rows can occupy. The scrollport (`.tss-timegrid`) fills
+ * `.tss-viewport`, the band between the toolbar and the footer — that is what gets
+ * measured, not the page. 0 before the panel has a layout.
+ */
+function readGridSpace(scroll) {
+  const viewport = scroll.closest('.tss-viewport') ?? scroll
+  const headerH = scroll.querySelector('.tss-tg-head')?.offsetHeight ?? 0
+  // clientHeight already excludes a horizontal scrollbar. It is 0 before layout,
+  // in which case the viewport (same box, once flexed) is the fallback.
+  const basis = scroll.clientHeight > 0 ? scroll.clientHeight : viewport.clientHeight
+  if (!Number.isFinite(basis)) return 0
+  return Math.max(0, basis - headerH)
+}
+
+/** `slotHeight` is the floor. A taller panel stretches; a shorter one keeps the floor. */
+function timeGridMetrics(rangeMinutes, slotMinutes, slotHeight, availablePx) {
+  const minPxPerMin = slotHeight / slotMinutes
+  const minBody = (rangeMinutes / slotMinutes) * slotHeight
+  const stretched = rangeMinutes > 0 && availablePx > minBody
+  const bodyHeight = stretched ? availablePx : minBody
+  const pxPerMin = rangeMinutes > 0 ? bodyHeight / rangeMinutes : minPxPerMin
+  return { bodyHeight, pxPerMin, slotPx: pxPerMin * slotMinutes }
+}
+
+/**
  * Day / Week / Work Week view.
  *
  * Performance notes:
@@ -34,7 +59,10 @@ export default function TimeGridView({
 }) {
   const scrollRef = useRef(null)
   const bodyRef = useRef(null)
-  const pxPerMin = slotHeight / slotMinutes
+  // Space the rows can fill. 0 until measured, which keeps the minimum slot height.
+  const [availablePx, setAvailablePx] = useState(0)
+  const rangeMinutes = rangeEndMin - rangeStartMin
+  const { bodyHeight, pxPerMin, slotPx } = timeGridMetrics(rangeMinutes, slotMinutes, slotHeight, availablePx)
   const buckets = useDayBuckets(days, events)
   const today = useToday()
 
@@ -43,6 +71,29 @@ export default function TimeGridView({
   useLayoutEffect(() => {
     live.current = { rangeStartMin, pxPerMin, slotMinutes, snapMinutes, locale, actions }
   })
+
+  // Stretch or shrink back to the floor when the panel, the view, or the visible
+  // hours change. ResizeObserver covers the container between those.
+  useLayoutEffect(() => {
+    const scroll = scrollRef.current
+    if (!scroll) return undefined
+    const viewport = scroll.closest('.tss-viewport') ?? scroll
+
+    const measure = () => {
+      const next = readGridSpace(scroll)
+      setAvailablePx((prev) => (Math.abs(prev - next) < 0.5 ? prev : next))
+    }
+
+    measure()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const observer = new ResizeObserver(measure)
+    observer.observe(viewport)
+    // content-box, so a scrollbar appearing or disappearing is a resize too.
+    observer.observe(scroll, { box: 'content-box' })
+    const header = scroll.querySelector('.tss-tg-head')
+    if (header) observer.observe(header)
+    return () => observer.disconnect()
+  }, [days, showFullDay, rangeStartMin, rangeEndMin])
 
   // In full-day mode, open scrolled to the start of business hours.
   useLayoutEffect(() => {
@@ -56,8 +107,8 @@ export default function TimeGridView({
   }, [rangeStartMin, rangeEndMin])
 
   const bodyStyle = {
-    height: (rangeEndMin - rangeStartMin) * pxPerMin,
-    '--tss-slot-h': `${slotHeight}px`,
+    height: bodyHeight,
+    '--tss-slot-h': `${slotPx}px`,
     '--tss-hour-h': `${60 * pxPerMin}px`,
     '--tss-biz-top': showFullDay ? `${(businessStartMin - rangeStartMin) * pxPerMin}px` : '0px',
     '--tss-biz-bottom': showFullDay ? `${(businessEndMin - rangeStartMin) * pxPerMin}px` : '100%',

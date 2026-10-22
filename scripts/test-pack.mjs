@@ -9,13 +9,21 @@
  *   - two copies of React, which in a real app shows up only as "Invalid hook call".
  */
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const root = resolve(import.meta.dirname, '..')
-const run = (cmd, args, cwd = root) =>
-  execFileSync(cmd, args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] })
+// CreateProcess will not run npm on Windows: the real file is npm.cmd, and a
+// .cmd only starts through cmd.exe. execFile('npm') is ENOENT there.
+const npmBin = process.platform === 'win32' ? 'npm.cmd' : 'npm'
+const run = (cmd, args, cwd = root) => {
+  const options = { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] }
+  if (process.platform === 'win32' && cmd.endsWith('.cmd')) {
+    return execFileSync(process.env.ComSpec || 'cmd.exe', ['/d', '/s', '/c', cmd, ...args], options)
+  }
+  return execFileSync(cmd, args, options)
+}
 
 const failures = []
 const check = (ok, label) => {
@@ -24,7 +32,7 @@ const check = (ok, label) => {
 }
 
 console.log('\ntest-pack: building')
-run('npm', ['run', 'build'])
+run(npmBin, ['run', 'build'])
 
 console.log('\ntest-pack: build output')
 const dist = (f) => join(root, 'dist', f)
@@ -49,7 +57,7 @@ check(css.includes('prefers-reduced-motion'), 'dist/styles.css keeps the reduced
 console.log('\ntest-pack: packing')
 const work = mkdtempSync(join(tmpdir(), 'tss-pack-'))
 try {
-  const packed = JSON.parse(run('npm', ['pack', '--json', '--pack-destination', work]))
+  const packed = JSON.parse(run(npmBin, ['pack', '--json', '--pack-destination', work]))
   const tgz = join(work, packed[0].filename)
   const shipped = packed[0].files.map((f) => f.path)
 
@@ -63,12 +71,12 @@ try {
 
   console.log('\ntest-pack: installing into a clean project')
   const app = join(work, 'app')
-  run('mkdir', ['-p', app])
+  mkdirSync(app, { recursive: true })
   writeFileSync(
     join(app, 'package.json'),
     JSON.stringify({ name: 'pack-smoke-test', private: true, version: '0.0.0', type: 'module' }, null, 2),
   )
-  run('npm', ['install', '--no-audit', '--no-fund', '--silent', tgz, 'react', 'react-dom'], app)
+  run(npmBin, ['install', '--no-audit', '--no-fund', '--silent', tgz, 'react', 'react-dom'], app)
 
   // Use it exactly as a consumer would: named import, server-render, look at the markup.
   writeFileSync(
